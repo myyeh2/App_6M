@@ -1,122 +1,113 @@
 ﻿// Jagmohan L. Humar "Dynsmics of Structures Third Edition" 
-// P502-P504頁, 與第App_6J測試相同，僅提供邊界值條件是 : 
+// P502-P504頁, 與第App_6J測試相同，但提供邊界值條件是 : 
 // t=4.5秒時， y0 = [-0.68877 | -1.37729]
 // t=16.5秒時，y1 = [0.11710  |  0.23071]。
 
-using System;
 using Matrix_0; 
 
-namespace ConsoleApp6M
+
+// 已知邊界條件，其向量為BVal
+// 邊界值 @t = 4.5 
+double[,] y0 = { { -0.68877 }, { -1.37729 } };
+// 邊界值 @t = 16.5 
+double[,] y1 = { { 0.11710 }, { 0.23071 } };
+ReMatrix BVal = (ReMatrix)y0 | y1;
+
+// 已知陣列 M, K, and C 
+double[,] M = { { 2, 0 }, { 0, 1 } };
+double[,] K = { { 3, -1 }, { -1, 1 } };
+double[,] C = { { 0.4, -0.05 }, { -0.05, 0.2 } };
+
+// 建構系統矩陣A : 
+ReMatrix Mi = ~(ReMatrix)M;
+Iden iden = new Iden(2);
+ReMatrix I = iden.Matrix;
+Zero zero = new Zero(2);
+ReMatrix O = zero.Matrix;
+ReMatrix A = ((-1.0 * Mi * C) & (-1.0 * Mi * K)) | (I & O);
+
+// 系統與狀態係數。
+// 特徵值矩陣D和特徵向量矩陣Q。
+EIG eig = new EIG(A);
+CxMatrix D = eig.CxMatrixD;
+CxMatrix V = eig.CxVector;
+CxMatrix Q = eig.CxMatrixQ;
+// 係數向量d。 
+CxHexp Hexp = new CxHexp(D, Q, 4.5);
+CxMatrix MatTemp = Hexp.GetCxMatrix;
+RowSlice rowSlice = new RowSlice(MatTemp, 2, 1);
+CxMatrix Mat1 = rowSlice.GetCxMatrix;
+
+Hexp = new CxHexp(D, Q, 16.5);
+MatTemp = Hexp.GetCxMatrix;
+rowSlice = new RowSlice(MatTemp, 2, 1);
+CxMatrix Mat2 = rowSlice.GetCxMatrix;
+
+// 矩陣Mat1和矩陣Mat2垂直合併。
+CxMatrix Mat = Mat1 | Mat2;
+CxMatrix d = ~Mat * BVal;
+
+// 列印標題。
+Console.Write("\n****{0,6}系{0,4}統{0,4}與{0,4}狀{0,4}態{0,4}參{0,4}數{0,6}****\n", "");
+
+// 列印系統與狀態參數。
+Console.Write("\n***{0,5}特徵值V{0,5}***\n{1}\n", "", new PR(V));
+Console.Write("\n***{0,5}特徵向量矩陣Q{0,5}***\n{1}\n", "", new PR(Q));
+Console.Write("\n***{0,5}係數向量d{0,5}***\n{1}\n", "", new PR(d));
+
+double step = 0.5;
+int iRow = (int)(50 / step + 1);
+int iCol = M.GetLength(1) + 1;
+ReMatrix Disp = new ReMatrix(iRow, iCol);
+ReMatrix Vel = new ReMatrix(iRow, iCol);
+ReMatrix Acc = new ReMatrix(iRow, iCol);
+
+for (int i = 0; i != iRow; i++)
 {
-    internal class Program
-    {
-        static void Main(string[] args)
-        {
+    double t = step * i;
 
-    // 已知邊界條件，其向量為BVal
-    // 邊界值 @t = 4.5 
-    double[,] y0 = { { -0.68877 }, { -1.37729 } };
-    // 邊界值 @t = 16.5 
-    double[,] y1 = { { 0.11710 }, { 0.23071 } };
-    ReMatrix BVal = (ReMatrix)y0 | y1; 
+    Hexp = new CxHexp(D, Q, t);
+    MatTemp = Hexp.GetCxMatrix;
+    ReMatrix yh = (ReMatrix)(MatTemp * d);
+    ReMatrix yhDot = A * yh;
 
-    // 已知陣列 M, K, and C 
-    double[,] M = { { 2, 0 }, { 0, 1 } };
-    double[,] K = { { 3, -1 }, { -1, 1 } };
-    double[,] C = { { 0.4, -0.05 }, { -0.05, 0.2 } };
+    Acc.Matrix[i, 0] = t;
+    Acc.Matrix[i, 1] = yhDot.Matrix[0, 0];
+    Acc.Matrix[i, 2] = yhDot.Matrix[1, 0];
 
-    // 建構系統矩陣A : 
-    ReMatrix Mi = ~(ReMatrix)M; 
-    Iden iden = new Iden(2);
-    ReMatrix I = iden.Matrix;
-    Zero zero = new Zero(2);
-    ReMatrix O = zero.Matrix;
-    ReMatrix A = ((-1.0 * Mi * C) & (-1.0 * Mi * K)) | (I & O);
+    Vel.Matrix[i, 0] = t;
+    Vel.Matrix[i, 1] = yh.Matrix[0, 0];
+    Vel.Matrix[i, 2] = yh.Matrix[1, 0];
 
-    // 系統與狀態係數。
-    // 特徵值矩陣D和特徵向量矩陣Q。
-    EIG eig = new EIG(A);
-    CxMatrix D = eig.CxMatrixD;
-    CxMatrix V = eig.CxVector;
-    CxMatrix Q = eig.CxMatrixQ;
-    // 係數向量d。 
-    CxToHexp Hexp = new CxToHexp(D, Q, 4.5);
-    CxMatrix MatTemp = Hexp.GetCxMatrix;
-    RowSlice rowSlice = new RowSlice(MatTemp, 2, 1);
-    CxMatrix Mat1 = rowSlice.GetCxMatrix;
-
-    Hexp = new CxToHexp(D, Q, 16.5);
-    MatTemp = Hexp.GetCxMatrix; 
-    rowSlice = new RowSlice(MatTemp, 2, 1);
-    CxMatrix Mat2 = rowSlice.GetCxMatrix;
-
-    // 矩陣Mat1和矩陣Mat2垂直合併。
-    CxMatrix Mat = Mat1 | Mat2;
-    CxMatrix d = ~ Mat * BVal; 
-
-    // 列印標題。
-    Console.Write("\n****{0,6}系{0,4}統{0,4}與{0,4}狀{0,4}態{0,4}參{0,4}數{0,6}****\n", "");
-
-    // 列印系統與狀態參數。
-    Console.Write("\n***{0,5}特徵值V{0,5}***\n{1}\n", "", new PR(V));
-    Console.Write("\n***{0,5}特徵向量矩陣Q{0,5}***\n{1}\n", "", new PR(Q));
-    Console.Write("\n***{0,5}係數向量d{0,5}***\n{1}\n", "", new PR(d));
-
-    double step = 0.5;
-    int iRow = (int)(50 / step + 1);
-    int iCol = M.GetLength(1) + 1;
-    ReMatrix Disp = new ReMatrix(iRow, iCol);
-    ReMatrix Vel = new ReMatrix(iRow, iCol);
-    ReMatrix Acc = new ReMatrix(iRow, iCol);
-
-    for (int i = 0; i != iRow; i++)
-    {
-        double t = step * i;
-
-        Hexp = new CxToHexp(D, Q, t);
-        MatTemp = Hexp.GetCxMatrix;
-        ReMatrix yh = (ReMatrix)(MatTemp * d); 
-        ReMatrix yhDot = A * yh;
-
-        Acc.Matrix[i, 0] = t;
-        Acc.Matrix[i, 1] = yhDot.Matrix[0, 0];
-        Acc.Matrix[i, 2] = yhDot.Matrix[1, 0];
-
-        Vel.Matrix[i, 0] = t;
-        Vel.Matrix[i, 1] = yh.Matrix[0, 0];
-        Vel.Matrix[i, 2] = yh.Matrix[1, 0];
-
-        Disp.Matrix[i, 0] = t;
-        Disp.Matrix[i, 1] = yh.Matrix[2, 0];
-        Disp.Matrix[i, 2] = yh.Matrix[3, 0];
-    }
-
-    // 列印標題。   
-    Console.Write("\n****{0,10}狀{0,5}態{0,5}響{0,5}應{0,10}****\n", "");
-
-    // 列印空間節點之狀態響應(變位，速度，和加速)。 
-    Console.Write("\n{0,5}***位移反應量***{0,5}\n{0,8}時間(秒)" +
-        "{0,8}第0點位移{0,8}第1點位移\n\n{1}", "", new PR(Disp));
-    Console.Write("\n{0,5}***速度反應量***{0,5}\n{0,8}時間(秒)" +
-        "{0,8}第0點速度{0,8}第1點速度\n\n{1}", "", new PR(Vel));
-    Console.Write("\n***{0,5}加速度反應量{0,5}***\n{0,8}時間(秒)" +
-        "{0,8}第0點加速度{0,7}第1點加速度\n\n{1}", "", new PR(Acc));
-
-    // 列印時間、節點變位、速度、和加速度等序列。 
-    Console.Write("\n時間序列\n{0}\n", new PR4(Disp, 0));  
-
-    Console.Write("\n第0點變位序列\n{0}\n", new PR4(Disp, 1));
-    Console.Write("\n第1點變位序列\n{0}\n", new PR4(Disp, 2));
-    Console.Write("\n第0點速度序列\n{0}\n", new PR4(Vel, 1));
-    Console.Write("\n第1點速度序列\n{0}\n", new PR4(Vel, 2));
-    Console.Write("\n第0點加速度序列\n{0}\n", new PR4(Acc, 1));
-    Console.Write("\n第1點加速度序列\n{0}\n", new PR4(Acc, 2));
-    Console.Write("\n\n"); 
-
-        }
-    }
+    Disp.Matrix[i, 0] = t;
+    Disp.Matrix[i, 1] = yh.Matrix[2, 0];
+    Disp.Matrix[i, 2] = yh.Matrix[3, 0];
 }
-/*
+
+// 列印標題。   
+Console.Write("\n****{0,10}狀{0,5}態{0,5}響{0,5}應{0,10}****\n", "");
+
+// 列印空間節點之狀態響應(變位，速度，和加速)。 
+Console.Write("\n{0,5}***位移反應量***{0,5}\n{0,8}時間(秒)" +
+    "{0,8}第0點位移{0,8}第1點位移\n\n{1}", "", new PR(Disp));
+Console.Write("\n{0,5}***速度反應量***{0,5}\n{0,8}時間(秒)" +
+    "{0,8}第0點速度{0,8}第1點速度\n\n{1}", "", new PR(Vel));
+Console.Write("\n***{0,5}加速度反應量{0,5}***\n{0,8}時間(秒)" +
+    "{0,8}第0點加速度{0,7}第1點加速度\n\n{1}", "", new PR(Acc));
+
+// 列印時間、節點變位、速度、和加速度等序列。 
+Console.Write("\n時間序列\n{0}\n", new PR4(Disp, 0));
+
+Console.Write("\n第0點變位序列\n{0}\n", new PR4(Disp, 1));
+Console.Write("\n第1點變位序列\n{0}\n", new PR4(Disp, 2));
+Console.Write("\n第0點速度序列\n{0}\n", new PR4(Vel, 1));
+Console.Write("\n第1點速度序列\n{0}\n", new PR4(Vel, 2));
+Console.Write("\n第0點加速度序列\n{0}\n", new PR4(Acc, 1));
+Console.Write("\n第1點加速度序列\n{0}\n", new PR4(Acc, 2));
+Console.Write("\n\n");
+
+
+/* 輸出結果如下 : 
 ****      系    統    與    狀    態    參    數      ****
 
 ***     特徵值V     ***
